@@ -1,43 +1,41 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { addToCart } from "../lib/cart";
 
-const products = [
-  {
-    slug: "essential-hoodie",
-    name: "Essential Hoodie",
-    price: 85,
-    image: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=800",
-    category: "HOODIES"
-  },
-  {
-    slug: "streetwear-jacket",
-    name: "Streetwear Jacket",
-    price: 120,
-    image: "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=800",
-    category: "OUTERWEAR"
-  },
-  {
-    slug: "essential-shirt",
-    name: "Essential Tee",
-    price: 45,
-    image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800",
-    category: "TOPS"
-  },
-  {
-    slug: "streetwear-fit",
-    name: "Signature Streetwear",
-    price: 95,
-    image: "https://images.unsplash.com/photo-1523398002811-999ca8dec234?w=800",
-    category: "COLLECTION"
-  }
-];
+type Product = {
+  id: number;
+  slug: string;
+  name: string;
+  price: number;
+  image_url: string;
+  category: string;
+};
 
 export default function ShopPage() {
+  const [products, setProducts] = useState<Product[]>([]);
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadProducts() {
+      try {
+        const response = await fetch("/api/products");
+        if (!response.ok) throw new Error("Failed to load products");
+
+        const data = await response.json();
+        setProducts(data);
+      } catch {
+        setMessage("Unable to load products. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadProducts();
+  }, []);
 
   return (
     <main style={{ background: "#080808", color: "white", minHeight: "100vh", padding: "35px 6%" }}>
@@ -53,31 +51,42 @@ export default function ShopPage() {
         {message && <p style={{ color: "#9ee6b0" }}>{message}</p>}
       </section>
 
-      <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 22 }}>
-        {products.map((product) => (
-          <article key={product.slug} style={{ background: "#121212", paddingBottom: 18 }}>
-            <img
-              src={product.image}
-              alt={product.name}
-              style={{ width: "100%", aspectRatio: "4 / 5", objectFit: "cover", display: "block" }}
-            />
-            <div style={{ padding: "12px 15px" }}>
-              <p style={{ color: "#999", fontSize: 11, letterSpacing: 2 }}>{product.category}</p>
-              <h2 style={{ fontSize: 18 }}>{product.name}</h2>
-              <p>${product.price.toFixed(2)} USD</p>
-              <button
-                onClick={() => {
-                  addToCart(product);
-                  setMessage(`${product.name} added to your bag.`);
-                }}
-                style={{ width: "100%", padding: 14, background: "#eee", color: "#080808", border: 0, fontWeight: 700 }}
-              >
-                ADD TO BAG
-              </button>
-            </div>
-          </article>
-        ))}
-      </section>
+      {loading ? (
+        <p>Loading PAXORAA collection...</p>
+      ) : products.length === 0 ? (
+        <p>No products available right now.</p>
+      ) : (
+        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 22 }}>
+          {products.map((product) => (
+            <article key={product.id} style={{ background: "#121212", paddingBottom: 18 }}>
+              <img
+                src={product.image_url}
+                alt={product.name}
+                style={{ width: "100%", aspectRatio: "4 / 5", objectFit: "cover", display: "block" }}
+              />
+              <div style={{ padding: "12px 15px" }}>
+                <p style={{ color: "#999", fontSize: 11, letterSpacing: 2 }}>{product.category}</p>
+                <h2 style={{ fontSize: 18 }}>{product.name}</h2>
+                <p>${(product.price / 100).toFixed(2)} USD</p>
+                <button
+                  onClick={() => {
+                    addToCart({
+                      slug: product.slug,
+                      name: product.name,
+                      price: product.price / 100,
+                      image: product.image_url,
+                    });
+                    setMessage(`${product.name} added to your bag.`);
+                  }}
+                  style={{ width: "100%", padding: 14, background: "#eee", color: "#080808", border: 0, fontWeight: 700 }}
+                >
+                  ADD TO BAG
+                </button>
+              </div>
+            </article>
+          ))}
+        </section>
+      )}
     </main>
   );
 }
